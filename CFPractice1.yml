@@ -1,0 +1,102 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creating Networking For Jenkins
+
+Resources: 
+  JenkinsVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: JenkinsVPC
+  JenkinsSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1a"
+      VpcId: !Ref JenkinsVPC
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: JenkinsSubnet
+  JenkinsIgw:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: JenkinsIgw
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref JenkinsVPC
+      InternetGatewayId: !Ref JenkinsIgw
+  JenkinsRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref JenkinsVPC
+      Tags:
+        - Key: Name
+          Value: JenkinsRT 
+  JenkinsRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref JenkinsRT
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref JenkinsIgw
+  routeTableAssocName:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref JenkinsSubnet
+      RouteTableId: !Ref JenkinsRT
+  myEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: JenkinsKP
+      ImageId: ami-06b263d6ceff0b3dd
+      InstanceType: t2.micro
+      SubnetId: !Ref JenkinsSubnet
+      SecurityGroupIds:
+        - !Ref JenkinsSG
+      UserData: !Base64 |
+        #!/bin/bash -ex
+        wget -q -O - http://pkg.jenkins-ci.org/debian/jenkins-ci.org.key | sudo apt-key add -
+        sudo sh -c 'echo deb http://pkg.jenkins-ci.org/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+        sudo apt update -y
+        sudo apt install jenkins
+        sudo systemctl start jenkins
+        sudo systemctl status jenkins
+        sudo ufw allow 8080
+        sudo ufw status
+        sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+      Tags:
+        - Key: Name
+          Value: JenkinsServer
+  JenkinsSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: JenkinsSG 
+      GroupDescription: Secruity group for Jenkins
+      VpcId: !Ref JenkinsVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 47.185.227.26/32
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 47.185.227.26/32
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 47.185.227.26/32
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: JenkinsSG
+  
