@@ -53,22 +53,11 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       KeyName: JenkinsKP
-      ImageId: ami-06b263d6ceff0b3dd
+      ImageId: ami-0c94855ba95c71c99
       InstanceType: t2.micro
       SubnetId: !Ref JenkinsSubnet
       SecurityGroupIds:
         - !Ref JenkinsSG
-      UserData: !Base64 |
-        #!/bin/bash -ex
-        wget -q -O - http://pkg.jenkins-ci.org/debian/jenkins-ci.org.key | sudo apt-key add -
-        sudo sh -c 'echo deb http://pkg.jenkins-ci.org/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
-        sudo apt update -y
-        sudo apt install jenkins
-        sudo systemctl start jenkins
-        sudo systemctl status jenkins
-        sudo ufw allow 8080
-        sudo ufw status
-        sudo cat /var/lib/jenkins/secrets/initialAdminPassword
       Tags:
         - Key: Name
           Value: JenkinsServer
@@ -86,15 +75,13 @@ Resources:
         - IpProtocol: tcp
           FromPort: 8080
           ToPort: 8080
-          CidrIp: 47.185.227.26/32
+          CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: 47.185.227.26/32
       SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
+        - IpProtocol: -1
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
